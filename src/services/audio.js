@@ -3,18 +3,31 @@
 let audioContext = null;
 let humOscillator = null;
 let humGain = null;
+let audioInitialized = false;
 
-const initAudio = () => {
-    if (!audioContext) {
+// Call this once after a user gesture (click, keypress, etc.)
+export const initAudio = () => {
+    if (audioInitialized) return;
+    
+    try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioContext.state === 'suspended') {
-        audioContext.resume();
+        audioInitialized = true;
+        console.log('Audio initialized');
+    } catch (e) {
+        console.warn('AudioContext not supported');
     }
 };
 
+const ensureAudio = () => {
+    if (!audioContext) return false;
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+    return true;
+};
+
 export const playBackgroundHum = () => {
-    initAudio();
+    if (!ensureAudio()) return;
     if (humOscillator) return; // Already playing
 
     humOscillator = audioContext.createOscillator();
@@ -37,7 +50,7 @@ export const playBackgroundHum = () => {
 };
 
 export const playGlitchSound = () => {
-    initAudio();
+    if (!ensureAudio()) return;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
 
@@ -57,7 +70,7 @@ export const playGlitchSound = () => {
 };
 
 export const playTypingSound = () => {
-    initAudio();
+    if (!ensureAudio()) return;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
 
@@ -88,6 +101,12 @@ export const playTTS = async (text) => {
         currentSource = null;
     }
 
+    // Skip TTS if audio not initialized
+    if (!ensureAudio()) {
+        console.log('Audio not ready, skipping TTS');
+        return Promise.resolve();
+    }
+
     try {
         const response = await fetch(`${API_URL}/tts`, {
             method: 'POST',
@@ -95,13 +114,17 @@ export const playTTS = async (text) => {
             body: JSON.stringify({ text })
         });
 
-        if (!response.ok) throw new Error("TTS Failed");
+        if (!response.ok) {
+            // TTS not available, silently skip
+            console.log('TTS not available');
+            return Promise.resolve();
+        }
 
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
 
         // Advanced Audio Context playback for Reverb
-        initAudio(); // Ensure context is ready
+        if (!ensureAudio()) return Promise.resolve();
         const audioBuffer = await fetch(url).then(res => res.arrayBuffer()).then(arr => audioContext.decodeAudioData(arr));
 
         const source = audioContext.createBufferSource();

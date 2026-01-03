@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { signInWithGoogle } from '../services/firebase';
+import { initAudio } from '../services/audio';
 import Typewriter from './Typewriter';
 
 const LoginScreen = ({ onLogin }) => {
     const [error, setError] = useState(null);
 
     const handleLogin = async () => {
+        // Initialize audio on user gesture
+        initAudio();
+        
         try {
             const user = await signInWithGoogle();
             onLogin(user);
