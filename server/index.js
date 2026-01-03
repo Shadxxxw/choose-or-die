@@ -90,9 +90,43 @@ const parseScenario = (text) => {
     };
 };
 
-// TTS désactivé en production (nécessite Python)
-app.post('/api/tts', (req, res) => {
-    res.status(503).json({ error: 'TTS not available in production' });
+// TTS via Mistral API (ou fallback Web Speech)
+app.post('/api/tts', async (req, res) => {
+    const { text } = req.body;
+    
+    if (!text) {
+        return res.status(400).json({ error: 'Text required' });
+    }
+
+    try {
+        // Utiliser l'API TTS de Mistral
+        const response = await fetch('https://api.mistral.ai/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'mistral-tts-latest',
+                input: text,
+                voice: 'echo' // voix grave/sombre
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            console.error('Mistral TTS error:', error);
+            return res.status(503).json({ error: 'TTS unavailable' });
+        }
+
+        // Renvoyer l'audio directement
+        res.set('Content-Type', 'audio/mpeg');
+        const buffer = await response.arrayBuffer();
+        res.send(Buffer.from(buffer));
+    } catch (error) {
+        console.error('TTS Error:', error);
+        res.status(500).json({ error: 'TTS failed' });
+    }
 });
 
 app.post('/api/generate-scenario', async (req, res) => {
