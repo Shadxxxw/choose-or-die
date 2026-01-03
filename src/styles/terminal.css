@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+:root {
+  --terminal-green: #39ff14; /* Phosphor green */
+  --terminal-dark-green: #0f1f0f;
+  --terminal-bg: #0a0a0a;
+  --scanline-color: rgba(18, 16, 16, 0.5);
+  --glow-color: rgba(57, 255, 20, 0.6);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--terminal-bg);
+  color: var(--terminal-green);
+  font-family: 'VT323', monospace;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+.crt-container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  position: relative;
+  z-index: 10;
+  text-shadow: 0 0 5px var(--glow-color);
+}
+
+/* Scrollbar styling */
+.screen::-webkit-scrollbar {
+  width: 10px;
+  background: var(--terminal-bg);
+}
+
+.screen::-webkit-scrollbar-thumb {
+  background: var(--terminal-green);
+  border-radius: 2px;
+}
+
+/* CRT Effects */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    var(--scanline-color) 50%,
+    rgba(0, 0, 0, 0) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 99;
+  opacity: 0.6;
+}
+
+.flicker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(18, 16, 16, 0.1);
+  opacity: 0;
+  z-index: 98;
+  pointer-events: none;
+  animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+  0% { opacity: 0.02; }
+  5% { opacity: 0.05; }
+  10% { opacity: 0.01; }
+  15% { opacity: 0.06; }
+  30% { opacity: 0.02; }
+  50% { opacity: 0.02; }
+  55% { opacity: 0.05; }
+  60% { opacity: 0.00; }
+  65% { opacity: 0.04; }
+  70% { opacity: 0.01; }
+  100% { opacity: 0.02; }
+}
+
+.glow {
+  animation: textFlicker 3s infinite alternate;
+}
+
+@keyframes textFlicker {
+  0% { text-shadow: 0 0 5px var(--glow-color); }
+  50% { text-shadow: 0 0 10px var(--glow-color), 0 0 2px var(--terminal-green); }
+  100% { text-shadow: 0 0 5px var(--glow-color); }
+}
+
+/* Scanline animation (optional slow roll) */
+@keyframes scanlineMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100%; }
+}
