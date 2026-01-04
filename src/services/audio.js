@@ -19,6 +19,15 @@ export const initAudio = () => {
 };
 
 const ensureAudio = () => {
+    // Auto-init if not done yet (fallback)
+    if (!audioContext && !audioInitialized) {
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioInitialized = true;
+        } catch (e) {
+            return false;
+        }
+    }
     if (!audioContext) return false;
     if (audioContext.state === 'suspended') {
         audioContext.resume();
@@ -129,19 +138,19 @@ export const playTTS = async (text) => {
 
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
-        source.playbackRate.value = 0.95; // Slight slow down
+        source.playbackRate.value = 1.0; // Vitesse normale (déjà réglé côté serveur)
 
         // Reverb Effect (Impulse Response)
         // Simulating a dark room programmatically
         const convolver = audioContext.createConvolver();
         const rate = audioContext.sampleRate;
-        const length = rate * 2.0; // 2 seconds reverb
+        const length = rate * 1.5; // 1.5 seconds reverb
         const impulse = audioContext.createBuffer(2, length, rate);
         const impulseL = impulse.getChannelData(0);
         const impulseR = impulse.getChannelData(1);
 
         for (let i = 0; i < length; i++) {
-            const decay = Math.pow(1 - i / length, 4); // Exponential decay
+            const decay = Math.pow(1 - i / length, 3); // Decay agressif
             impulseL[i] = (Math.random() * 2 - 1) * decay;
             impulseR[i] = (Math.random() * 2 - 1) * decay;
         }
@@ -150,8 +159,8 @@ export const playTTS = async (text) => {
         // Gain nodes for Wet/Dry mix
         const dryGain = audioContext.createGain();
         const wetGain = audioContext.createGain();
-        dryGain.gain.value = 0.8; // Original voice
-        wetGain.gain.value = 0.4; // Reverb tail
+        dryGain.gain.value = 0.9; // Voix principale forte
+        wetGain.gain.value = 0.25; // Reverb subtile
 
         source.connect(dryGain);
         dryGain.connect(audioContext.destination);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Typewriter from './Typewriter';
 import Glitch from './Glitch';
 import { generateScenario } from '../services/openai';
-import { playBackgroundHum, playGlitchSound, playTTS } from '../services/audio';
+import { playBackgroundHum, playGlitchSound, playTTS, initAudio } from '../services/audio';
 
 const GameScreen = ({ user }) => {
     const [level, setLevel] = useState(1);
@@ -39,7 +39,10 @@ const GameScreen = ({ user }) => {
             startGame();
         }
 
-        const handleInteraction = () => playBackgroundHum();
+        const handleInteraction = () => {
+            initAudio();
+            playBackgroundHum();
+        };
         window.addEventListener('click', handleInteraction, { once: true });
         return () => window.removeEventListener('click', handleInteraction);
     }, []);

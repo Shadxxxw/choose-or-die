@@ -1,6 +1,14 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 import express from 'express';
 import cors from 'cors';
 import { OpenAI } from 'openai';
+import { spawn } from 'child_process';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -90,7 +98,7 @@ const parseScenario = (text) => {
     };
 };
 
-// TTS via Mistral API (ou fallback Web Speech)
+// TTS via Edge TTS (Python) - Voix masculine française
 app.post('/api/tts', async (req, res) => {
     const { text } = req.body;
     
@@ -99,30 +107,33 @@ app.post('/api/tts', async (req, res) => {
     }
 
     try {
-        // Utiliser l'API TTS de Mistral
-        const response = await fetch('https://api.mistral.ai/v1/audio/speech', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'mistral-tts-latest',
-                input: text,
-                voice: 'echo' // voix grave/sombre
-            })
+        const pythonScript = path.join(__dirname, 'tts-edge.py');
+        const python = spawn('python', [pythonScript, text]);
+        
+        const chunks = [];
+        
+        python.stdout.on('data', (data) => {
+            chunks.push(data);
         });
-
-        if (!response.ok) {
-            const error = await response.text();
-            console.error('Mistral TTS error:', error);
-            return res.status(503).json({ error: 'TTS unavailable' });
-        }
-
-        // Renvoyer l'audio directement
-        res.set('Content-Type', 'audio/mpeg');
-        const buffer = await response.arrayBuffer();
-        res.send(Buffer.from(buffer));
+        
+        python.stderr.on('data', (data) => {
+            console.error('TTS stderr:', data.toString());
+        });
+        
+        python.on('close', (code) => {
+            if (code === 0 && chunks.length > 0) {
+                const audioBuffer = Buffer.concat(chunks);
+                res.set('Content-Type', 'audio/mpeg');
+                res.send(audioBuffer);
+            } else {
+                res.status(500).json({ error: 'TTS failed' });
+            }
+        });
+        
+        python.on('error', (err) => {
+            console.error('TTS Error:', err);
+            res.status(500).json({ error: 'TTS failed' });
+        });
     } catch (error) {
         console.error('TTS Error:', error);
         res.status(500).json({ error: 'TTS failed' });
