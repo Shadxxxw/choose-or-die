@@ -106,6 +106,8 @@ app.post('/api/tts', async (req, res) => {
         return res.status(400).json({ error: 'Text required' });
     }
 
+    let responded = false;
+
     try {
         const pythonScript = path.join(__dirname, 'tts-edge.py');
         const python = spawn('python', [pythonScript, text]);
@@ -121,6 +123,9 @@ app.post('/api/tts', async (req, res) => {
         });
         
         python.on('close', (code) => {
+            if (responded) return;
+            responded = true;
+            
             if (code === 0 && chunks.length > 0) {
                 const audioBuffer = Buffer.concat(chunks);
                 res.set('Content-Type', 'audio/mpeg');
@@ -131,10 +136,14 @@ app.post('/api/tts', async (req, res) => {
         });
         
         python.on('error', (err) => {
+            if (responded) return;
+            responded = true;
             console.error('TTS Error:', err);
             res.status(500).json({ error: 'TTS failed' });
         });
     } catch (error) {
+        if (responded) return;
+        responded = true;
         console.error('TTS Error:', error);
         res.status(500).json({ error: 'TTS failed' });
     }
